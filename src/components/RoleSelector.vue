@@ -72,8 +72,8 @@ const filteredRoles = computed(() => {
 .role-float-stage {
   display: flex;
   flex-direction: column;
-  gap: 22px;
-  padding-bottom: 130px;
+  gap: 20px;
+  padding-bottom: 24px;
 }
 
 .hero-float {

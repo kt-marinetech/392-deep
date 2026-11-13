@@ -22,14 +22,8 @@ const props = defineProps({
   stepIndex: {
     type: Number,
     default: 0
-  },
-  textVisible: {
-    type: Boolean,
-    default: true
   }
 });
-
-const emit = defineEmits(['prev', 'next']);
 
 const activeDayIdx = ref(0);
 
@@ -40,50 +34,65 @@ watch(
   }
 );
 
-const totalSteps = computed(() => (props.mode === 'base' ? props.baseSteps.length : 4));
 const currentBase = computed(() => props.baseSteps[props.stepIndex] || null);
-const stepKey = computed(() => `${props.mode}-${props.stepIndex}`);
-const canGoPrev = computed(() => !(props.mode === 'base' && props.stepIndex === 0));
-
-const nextLabel = computed(() => {
-  if (props.mode === 'base' && props.stepIndex === totalSteps.value - 1) {
-    return 'К правилам роли';
-  }
-  if (props.mode === 'role' && props.stepIndex === totalSteps.value - 1) {
-    return 'К шлюзам';
-  }
-  return 'Дальше';
-});
 </script>
 
 <template>
   <section class="brief-stage">
-    <Transition name="fog-reveal" mode="out-in">
-      <div v-if="textVisible" :key="stepKey" class="brief-float">
-        <p class="brief-kicker mist-glow">
-          {{
-            mode === 'base'
-              ? `Общие правила · Фонарь 0${stepIndex + 1}`
-              : `${roleTitle} · Фонарь 0${stepIndex + 1}`
-          }}
+    <div class="brief-float">
+      <p class="brief-kicker mist-glow">
+        {{
+          mode === 'base'
+            ? `Общие правила · Фонарь 0${stepIndex + 1}`
+            : `${roleTitle} · Фонарь 0${stepIndex + 1}`
+        }}
+      </p>
+
+      <!-- BASE INTRO -->
+      <template v-if="mode === 'base' && currentBase">
+        <h2 class="display-title brief-title mist-glow">
+          {{ currentBase.title }}
+        </h2>
+        <p class="brief-lead mist-glow">
+          <RichMistText :text="currentBase.lead" />
         </p>
 
-        <!-- BASE INTRO -->
-        <template v-if="mode === 'base' && currentBase">
-          <h2 class="display-title brief-title mist-glow">
-            {{ currentBase.title }}
-          </h2>
+        <div class="columns-float">
+          <div v-for="col in currentBase.columns" :key="col.heading" class="col-block">
+            <h3 class="col-heading mist-glow">
+              <RichMistText :text="col.heading" />
+            </h3>
+            <ul class="dust-list">
+              <li v-for="line in col.lines" :key="line" class="mist-glow">
+                <RichMistText :text="line" />
+              </li>
+            </ul>
+          </div>
+        </div>
+      </template>
+
+      <!-- ROLE INTRO -->
+      <template v-else-if="mode === 'role' && roleBriefing">
+        <!-- 0: Focus & Boundaries -->
+        <template v-if="stepIndex === 0">
+          <h2 class="display-title brief-title mist-glow">Твоя зона и границы</h2>
           <p class="brief-lead mist-glow">
-            <RichMistText :text="currentBase.lead" />
+            <RichMistText :text="roleBriefing.focus" />
           </p>
 
           <div class="columns-float">
-            <div v-for="col in currentBase.columns" :key="col.heading" class="col-block">
-              <h3 class="col-heading mist-glow">
-                <RichMistText :text="col.heading" />
-              </h3>
+            <div class="col-block">
+              <h3 class="col-heading mist-glow">Что ты делаешь</h3>
               <ul class="dust-list">
-                <li v-for="line in col.lines" :key="line" class="mist-glow">
+                <li v-for="line in roleBriefing.canDo" :key="line" class="mist-glow">
+                  <RichMistText :text="line" />
+                </li>
+              </ul>
+            </div>
+            <div class="col-block">
+              <h3 class="col-heading mist-glow">Право сказать «нет»</h3>
+              <ul class="dust-list">
+                <li v-for="line in roleBriefing.cantDo" :key="line" class="mist-glow">
                   <RichMistText :text="line" />
                 </li>
               </ul>
@@ -91,118 +100,62 @@ const nextLabel = computed(() => {
           </div>
         </template>
 
-        <!-- ROLE INTRO -->
-        <template v-else-if="mode === 'role' && roleBriefing">
-          <!-- 0: Focus & Boundaries -->
-          <template v-if="stepIndex === 0">
-            <h2 class="display-title brief-title mist-glow">Твоя зона и границы</h2>
-            <p class="brief-lead mist-glow">
-              <RichMistText :text="roleBriefing.focus" />
-            </p>
+        <!-- 1: Sprint Days -->
+        <template v-else-if="stepIndex === 1">
+          <h2 class="display-title brief-title mist-glow">Твои дни в спринте</h2>
+          <p class="brief-lead mist-glow">
+            Выбери интервал в двухнедельном ритме, чтобы увидеть главный фокус твоей роли.
+          </p>
 
-            <div class="columns-float">
-              <div class="col-block">
-                <h3 class="col-heading mist-glow">Что ты делаешь</h3>
-                <ul class="dust-list">
-                  <li v-for="line in roleBriefing.canDo" :key="line" class="mist-glow">
-                    <RichMistText :text="line" />
-                  </li>
-                </ul>
-              </div>
-              <div class="col-block">
-                <h3 class="col-heading mist-glow">Право сказать «нет»</h3>
-                <ul class="dust-list">
-                  <li v-for="line in roleBriefing.cantDo" :key="line" class="mist-glow">
-                    <RichMistText :text="line" />
-                  </li>
-                </ul>
-              </div>
-            </div>
-          </template>
+          <div class="days-strip">
+            <button
+              v-for="(slot, idx) in roleBriefing.sprintDays"
+              :key="slot.days"
+              type="button"
+              class="lantern-btn day-btn"
+              :class="{ 'is-active': activeDayIdx === idx }"
+              @click="activeDayIdx = idx"
+            >
+              {{ slot.days }}
+            </button>
+          </div>
 
-          <!-- 1: Sprint Days -->
-          <template v-else-if="stepIndex === 1">
-            <h2 class="display-title brief-title mist-glow">Твои дни в спринте</h2>
-            <p class="brief-lead mist-glow">
-              Выбери интервал в двухнедельном ритме, чтобы увидеть главный фокус твоей роли.
-            </p>
-
-            <div class="days-strip">
-              <button
-                v-for="(slot, idx) in roleBriefing.sprintDays"
-                :key="slot.days"
-                type="button"
-                class="lantern-btn day-btn"
-                :class="{ 'is-active': activeDayIdx === idx }"
-                @click="activeDayIdx = idx"
-              >
-                {{ slot.days }}
-              </button>
-            </div>
-
-            <Transition name="fog-reveal" mode="out-in">
-              <p
-                v-if="roleBriefing.sprintDays[activeDayIdx]"
-                :key="activeDayIdx"
-                class="day-focus mist-glow"
-              >
-                <RichMistText :text="roleBriefing.sprintDays[activeDayIdx].label" />
-              </p>
-            </Transition>
-          </template>
-
-          <!-- 2: Branches / Flow -->
-          <template v-else-if="stepIndex === 2">
-            <h2 class="display-title brief-title mist-glow">
-              <RichMistText :text="roleBriefing.flowHeading" />
-            </h2>
-            <p class="brief-lead mist-glow">
-              Как проходит задача и код от старта работы до выпуска версии.
-            </p>
-
-            <ul class="dust-list flow-dust-list">
-              <li v-for="line in roleBriefing.flowLines" :key="line" class="mist-glow">
-                <RichMistText :text="line" />
-              </li>
-            </ul>
-          </template>
-
-          <!-- 3: Meetings -->
-          <template v-else-if="stepIndex === 3">
-            <h2 class="display-title brief-title mist-glow">Только твои встречи</h2>
-            <p class="brief-lead mist-glow">
-              Встреча существует только ради зафиксированного результата в Трекере.
-            </p>
-
-            <ul class="dust-list meetings-float">
-              <li v-for="m in roleBriefing.meetings" :key="m" class="mist-glow">
-                <RichMistText :text="m" />
-              </li>
-            </ul>
-          </template>
+          <p v-if="roleBriefing.sprintDays[activeDayIdx]" class="day-focus mist-glow">
+            <RichMistText :text="roleBriefing.sprintDays[activeDayIdx].label" />
+          </p>
         </template>
-      </div>
-    </Transition>
 
-    <!-- Fixed-position viewport navigation controls -->
-    <button
-      type="button"
-      class="fixed-lantern-btn is-left"
-      :disabled="!canGoPrev"
-      @click="emit('prev')"
-    >
-      <span class="key-hint" aria-hidden="true">←</span>
-      <span>Назад</span>
-    </button>
+        <!-- 2: Branches / Flow -->
+        <template v-else-if="stepIndex === 2">
+          <h2 class="display-title brief-title mist-glow">
+            <RichMistText :text="roleBriefing.flowHeading" />
+          </h2>
+          <p class="brief-lead mist-glow">
+            Как проходит задача и код от старта работы до выпуска версии.
+          </p>
 
-    <button
-      type="button"
-      class="fixed-lantern-btn is-right"
-      @click="emit('next')"
-    >
-      <span>{{ nextLabel }}</span>
-      <span class="key-hint" aria-hidden="true">→</span>
-    </button>
+          <ul class="dust-list flow-dust-list">
+            <li v-for="line in roleBriefing.flowLines" :key="line" class="mist-glow">
+              <RichMistText :text="line" />
+            </li>
+          </ul>
+        </template>
+
+        <!-- 3: Meetings -->
+        <template v-else-if="stepIndex === 3">
+          <h2 class="display-title brief-title mist-glow">Только твои встречи</h2>
+          <p class="brief-lead mist-glow">
+            Встреча существует только ради зафиксированного результата в Трекере.
+          </p>
+
+          <ul class="dust-list meetings-float">
+            <li v-for="m in roleBriefing.meetings" :key="m" class="mist-glow">
+              <RichMistText :text="m" />
+            </li>
+          </ul>
+        </template>
+      </template>
+    </div>
   </section>
 </template>
 
@@ -212,8 +165,7 @@ const nextLabel = computed(() => {
   flex-direction: column;
   align-items: flex-start;
   justify-content: flex-start;
-  min-height: 380px;
-  padding-bottom: 195px;
+  padding-bottom: 20px;
 }
 
 .brief-float {
@@ -283,6 +235,7 @@ const nextLabel = computed(() => {
 
 .day-focus {
   margin-top: 4px;
+  min-height: 54px;
   font-size: 17px;
   color: var(--text-primary);
   line-height: 1.62;

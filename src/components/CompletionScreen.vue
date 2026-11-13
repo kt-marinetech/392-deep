@@ -77,7 +77,7 @@ const verdict = computed(() => {
   flex-direction: column;
   align-items: flex-start;
   gap: 16px;
-  padding-bottom: 185px;
+  padding-bottom: 24px;
 }
 
 .complete-kicker {

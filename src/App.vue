@@ -16,23 +16,34 @@ import {
   setSoundMuted
 } from './utils/sound';
 
-// 'ROLE_SELECT' | 'BRIEFING_BASE' | 'BRIEFING_ROLE' | 'PLAYING' | 'COMPLETED'
-const gameState = ref('ROLE_SELECT');
+// Target state (drives AbyssCanvas diver & lantern targets immediately)
+const targetState = ref('ROLE_SELECT');
 const selectedRoleId = ref('');
-const baseStep = ref(0);
-const roleStep = ref(0);
+const targetBaseStep = ref(0);
+const targetRoleStep = ref(0);
+const targetIndex = ref(0);
+
+// Displayed state (swapped invisibly while .stage-veil is fogged at opacity 0)
+const displayedState = ref('ROLE_SELECT');
+const displayedBaseStep = ref(0);
+const displayedRoleStep = ref(0);
+const displayedIndex = ref(0);
+
+const isFogged = ref(false);
 const encounters = ref([]);
 const obstacles = ref([]);
-const currentIndex = ref(0);
 const trapNonce = ref(0);
 const trapCount = ref(0);
 const firstTryCount = ref(0);
 const isShaking = ref(false);
 const soundMuted = ref(isSoundMuted());
-const textReady = ref(true);
+const stageContainerRef = ref(null);
 
 let shakeTimer = null;
+let minFadeTimer = null;
 let fallbackArrivalTimer = null;
+let minFadeDone = true;
+let arrivedDone = true;
 
 const selectedRole = computed(
   () => ROLES.find((r) => r.id === selectedRoleId.value) || null
@@ -43,36 +54,109 @@ const currentRoleBriefing = computed(
 );
 
 const currentEncounter = computed(
-  () => encounters.value[currentIndex.value] || null
+  () => encounters.value[displayedIndex.value] || null
 );
 
 const currentObstacleSolved = computed(
-  () => Boolean(obstacles.value[currentIndex.value]?.solved)
+  () => Boolean(obstacles.value[displayedIndex.value]?.solved)
 );
 
 const currentCheatsheet = computed(
   () => ROLE_CHEATSHEET[selectedRoleId.value] || []
 );
 
-function beginArrivalWait() {
-  textReady.value = false;
+const showBriefingNav = computed(
+  () => targetState.value === 'BRIEFING_BASE' || targetState.value === 'BRIEFING_ROLE'
+);
+
+const canGoPrev = computed(
+  () => !(targetState.value === 'BRIEFING_BASE' && targetBaseStep.value === 0)
+);
+
+const briefingNextLabel = computed(() => {
+  if (
+    targetState.value === 'BRIEFING_BASE' &&
+    targetBaseStep.value === BASE_BRIEFING.length - 1
+  ) {
+    return 'К правилам роли';
+  }
+  if (targetState.value === 'BRIEFING_ROLE' && targetRoleStep.value === 3) {
+    return 'К шлюзам';
+  }
+  return 'Дальше';
+});
+
+const showEncounterNext = computed(
+  () => displayedState.value === 'PLAYING' && currentObstacleSolved.value && !isFogged.value
+);
+
+function handleBriefingPrev() {
+  if (targetState.value === 'BRIEFING_BASE') {
+    handleBasePrev();
+  } else if (targetState.value === 'BRIEFING_ROLE') {
+    handleRolePrev();
+  }
+}
+
+function handleBriefingNext() {
+  if (targetState.value === 'BRIEFING_BASE') {
+    handleBaseNext();
+  } else if (targetState.value === 'BRIEFING_ROLE') {
+    handleRoleNext();
+  }
+}
+
+function flushRevealIfReady() {
+  if (!minFadeDone || !arrivedDone) return;
+
+  // Swap displayed content & reset inner scroll invisibly while opacity === 0
+  displayedState.value = targetState.value;
+  displayedBaseStep.value = targetBaseStep.value;
+  displayedRoleStep.value = targetRoleStep.value;
+  displayedIndex.value = targetIndex.value;
+
+  if (stageContainerRef.value) {
+    stageContainerRef.value.scrollTop = 0;
+  }
+
+  // Reveal smoothly out of fog on next frame
+  requestAnimationFrame(() => {
+    isFogged.value = false;
+  });
+}
+
+function transitionScene(applyTargets, waitForDiver = true) {
+  if (minFadeTimer) clearTimeout(minFadeTimer);
   if (fallbackArrivalTimer) clearTimeout(fallbackArrivalTimer);
-  fallbackArrivalTimer = setTimeout(() => {
-    textReady.value = true;
-  }, 950);
+
+  isFogged.value = true;
+  minFadeDone = false;
+  arrivedDone = !waitForDiver;
+
+  applyTargets();
+
+  minFadeTimer = setTimeout(() => {
+    minFadeDone = true;
+    flushRevealIfReady();
+  }, 240);
+
+  if (waitForDiver) {
+    fallbackArrivalTimer = setTimeout(() => {
+      arrivedDone = true;
+      flushRevealIfReady();
+    }, 900);
+  }
 }
 
 function handleDiverArrived() {
   if (fallbackArrivalTimer) clearTimeout(fallbackArrivalTimer);
-  textReady.value = true;
+  arrivedDone = true;
   playSonarStep();
+  flushRevealIfReady();
 }
 
 function startRoleRun(roleId) {
   selectedRoleId.value = roleId;
-  baseStep.value = 0;
-  roleStep.value = 0;
-
   const list = getEncountersForRole(roleId);
   encounters.value = list;
   obstacles.value = list.map((item) => ({
@@ -80,65 +164,71 @@ function startRoleRun(roleId) {
     obstacleType: item.obstacleType,
     solved: false
   }));
-  currentIndex.value = 0;
   trapCount.value = 0;
   firstTryCount.value = 0;
 
-  beginArrivalWait();
-  gameState.value = 'BRIEFING_BASE';
+  transitionScene(() => {
+    targetBaseStep.value = 0;
+    targetRoleStep.value = 0;
+    targetIndex.value = 0;
+    targetState.value = 'BRIEFING_BASE';
+  }, true);
 }
 
 function handleBaseNext() {
-  beginArrivalWait();
-  if (baseStep.value < BASE_BRIEFING.length - 1) {
-    baseStep.value += 1;
-  } else {
-    roleStep.value = 0;
-    gameState.value = 'BRIEFING_ROLE';
-  }
+  transitionScene(() => {
+    if (targetBaseStep.value < BASE_BRIEFING.length - 1) {
+      targetBaseStep.value += 1;
+    } else {
+      targetRoleStep.value = 0;
+      targetState.value = 'BRIEFING_ROLE';
+    }
+  }, true);
 }
 
 function handleBasePrev() {
-  if (baseStep.value > 0) {
-    beginArrivalWait();
-    baseStep.value -= 1;
-  }
+  if (targetBaseStep.value <= 0) return;
+  transitionScene(() => {
+    targetBaseStep.value -= 1;
+  }, true);
 }
 
 function handleRoleNext() {
-  beginArrivalWait();
-  if (roleStep.value < 3) {
-    roleStep.value += 1;
-  } else {
-    gameState.value = 'PLAYING';
-  }
+  transitionScene(() => {
+    if (targetRoleStep.value < 3) {
+      targetRoleStep.value += 1;
+    } else {
+      targetState.value = 'PLAYING';
+    }
+  }, true);
 }
 
 function handleRolePrev() {
-  beginArrivalWait();
-  if (roleStep.value > 0) {
-    roleStep.value -= 1;
-  } else {
-    baseStep.value = BASE_BRIEFING.length - 1;
-    gameState.value = 'BRIEFING_BASE';
-  }
+  transitionScene(() => {
+    if (targetRoleStep.value > 0) {
+      targetRoleStep.value -= 1;
+    } else {
+      targetBaseStep.value = BASE_BRIEFING.length - 1;
+      targetState.value = 'BRIEFING_BASE';
+    }
+  }, true);
 }
 
 function handleSelectLantern(idx) {
-  if (gameState.value === 'BRIEFING_BASE') {
-    if (baseStep.value === idx) return;
-    beginArrivalWait();
-    baseStep.value = idx;
-  } else if (gameState.value === 'BRIEFING_ROLE') {
-    if (roleStep.value === idx) return;
-    beginArrivalWait();
-    roleStep.value = idx;
+  if (targetState.value === 'BRIEFING_BASE' && targetBaseStep.value !== idx) {
+    transitionScene(() => {
+      targetBaseStep.value = idx;
+    }, true);
+  } else if (targetState.value === 'BRIEFING_ROLE' && targetRoleStep.value !== idx) {
+    transitionScene(() => {
+      targetRoleStep.value = idx;
+    }, true);
   }
 }
 
 function handleSolve({ firstTry }) {
-  if (obstacles.value[currentIndex.value]) {
-    obstacles.value[currentIndex.value].solved = true;
+  if (obstacles.value[displayedIndex.value]) {
+    obstacles.value[displayedIndex.value].solved = true;
   }
   if (firstTry) {
     firstTryCount.value += 1;
@@ -161,20 +251,22 @@ function handleTrap() {
 }
 
 function handleAdvance() {
-  if (currentIndex.value < encounters.value.length - 1) {
-    beginArrivalWait();
-    currentIndex.value += 1;
+  if (targetIndex.value < encounters.value.length - 1) {
+    transitionScene(() => {
+      targetIndex.value += 1;
+    }, true);
   } else {
-    gameState.value = 'COMPLETED';
-    textReady.value = true;
+    transitionScene(() => {
+      targetState.value = 'COMPLETED';
+    }, false);
     playCompleteChord();
   }
 }
 
 function resetToRoleSelect() {
-  if (fallbackArrivalTimer) clearTimeout(fallbackArrivalTimer);
-  textReady.value = true;
-  gameState.value = 'ROLE_SELECT';
+  transitionScene(() => {
+    targetState.value = 'ROLE_SELECT';
+  }, false);
   playSonarStep();
 }
 
@@ -187,18 +279,21 @@ function restartTrialsOnly() {
     obstacleType: item.obstacleType,
     solved: false
   }));
-  currentIndex.value = 0;
   trapCount.value = 0;
   firstTryCount.value = 0;
-  beginArrivalWait();
-  gameState.value = 'PLAYING';
+
+  transitionScene(() => {
+    targetIndex.value = 0;
+    targetState.value = 'PLAYING';
+  }, true);
 }
 
 function reviewBriefing() {
-  baseStep.value = 0;
-  roleStep.value = 0;
-  beginArrivalWait();
-  gameState.value = 'BRIEFING_BASE';
+  transitionScene(() => {
+    targetBaseStep.value = 0;
+    targetRoleStep.value = 0;
+    targetState.value = 'BRIEFING_BASE';
+  }, true);
 }
 
 function toggleSound() {
@@ -215,21 +310,25 @@ function handleKeydown(e) {
   if (tag === 'INPUT' || tag === 'TEXTAREA') return;
 
   if (e.key === 'ArrowLeft') {
-    if (gameState.value === 'BRIEFING_BASE') {
+    if (targetState.value === 'BRIEFING_BASE') {
       e.preventDefault();
       handleBasePrev();
-    } else if (gameState.value === 'BRIEFING_ROLE') {
+    } else if (targetState.value === 'BRIEFING_ROLE') {
       e.preventDefault();
       handleRolePrev();
     }
   } else if (e.key === 'ArrowRight' || e.code === 'Space') {
-    if (gameState.value === 'BRIEFING_BASE') {
+    if (targetState.value === 'BRIEFING_BASE') {
       e.preventDefault();
       handleBaseNext();
-    } else if (gameState.value === 'BRIEFING_ROLE') {
+    } else if (targetState.value === 'BRIEFING_ROLE') {
       e.preventDefault();
       handleRoleNext();
-    } else if (gameState.value === 'PLAYING' && textReady.value && currentObstacleSolved.value) {
+    } else if (
+      targetState.value === 'PLAYING' &&
+      !isFogged.value &&
+      currentObstacleSolved.value
+    ) {
       e.preventDefault();
       handleAdvance();
     }
@@ -243,6 +342,7 @@ onMounted(() => {
 onUnmounted(() => {
   window.removeEventListener('keydown', handleKeydown);
   if (shakeTimer) clearTimeout(shakeTimer);
+  if (minFadeTimer) clearTimeout(minFadeTimer);
   if (fallbackArrivalTimer) clearTimeout(fallbackArrivalTimer);
 });
 </script>
@@ -250,16 +350,15 @@ onUnmounted(() => {
 <template>
   <div class="abyss-shell">
     <AbyssCanvas
-      :game-state="gameState"
-      :briefing-step="gameState === 'BRIEFING_BASE' ? baseStep : roleStep"
+      :game-state="targetState"
+      :briefing-step="targetState === 'BRIEFING_BASE' ? targetBaseStep : targetRoleStep"
       :obstacles="obstacles"
-      :current-index="currentIndex"
+      :current-index="targetIndex"
       :trap-nonce="trapNonce"
       @arrived="handleDiverArrived"
       @select-lantern="handleSelectLantern"
     />
 
-    <!-- Minimal transparent top bar with zero center boxes or duplicates -->
     <header class="horizon-bar">
       <button type="button" class="brand-mark mist-glow" @click="resetToRoleSelect">
         Глубина 392
@@ -267,7 +366,7 @@ onUnmounted(() => {
 
       <div class="horizon-actions">
         <button
-          v-if="gameState === 'PLAYING'"
+          v-if="targetState === 'PLAYING'"
           type="button"
           class="lantern-btn top-link"
           @click="reviewBriefing"
@@ -275,7 +374,7 @@ onUnmounted(() => {
           К вводной
         </button>
         <button
-          v-if="gameState !== 'ROLE_SELECT'"
+          v-if="targetState !== 'ROLE_SELECT'"
           type="button"
           class="lantern-btn top-link"
           @click="resetToRoleSelect"
@@ -292,55 +391,42 @@ onUnmounted(() => {
       </div>
     </header>
 
-    <main class="stage-container" :class="{ 'is-shaking': isShaking }">
-      <Transition name="fog-reveal" mode="out-in">
+    <main ref="stageContainerRef" class="stage-container" :class="{ 'is-shaking': isShaking }">
+      <div class="stage-veil" :class="{ 'is-fogged': isFogged }">
         <RoleSelector
-          v-if="gameState === 'ROLE_SELECT'"
-          key="role-select"
+          v-if="displayedState === 'ROLE_SELECT'"
           :roles="ROLES"
           :selected-role-id="selectedRoleId"
           @select="startRoleRun"
         />
 
         <BriefingStage
-          v-else-if="gameState === 'BRIEFING_BASE'"
-          key="brief-base"
+          v-else-if="displayedState === 'BRIEFING_BASE'"
           mode="base"
           :base-steps="BASE_BRIEFING"
-          :step-index="baseStep"
-          :text-visible="textReady"
-          @next="handleBaseNext"
-          @prev="handleBasePrev"
+          :step-index="displayedBaseStep"
         />
 
         <BriefingStage
-          v-else-if="gameState === 'BRIEFING_ROLE' && currentRoleBriefing"
-          key="brief-role"
+          v-else-if="displayedState === 'BRIEFING_ROLE' && currentRoleBriefing"
           mode="role"
           :role-briefing="currentRoleBriefing"
           :role-title="selectedRole?.shortTitle || ''"
-          :step-index="roleStep"
-          :text-visible="textReady"
-          @next="handleRoleNext"
-          @prev="handleRolePrev"
+          :step-index="displayedRoleStep"
         />
 
         <EncounterStage
-          v-else-if="gameState === 'PLAYING' && currentEncounter && selectedRole"
-          key="encounter-stage"
+          v-else-if="displayedState === 'PLAYING' && currentEncounter && selectedRole"
           :encounter="currentEncounter"
-          :index="currentIndex"
+          :index="displayedIndex"
           :total="encounters.length"
           :role-title="selectedRole.shortTitle"
-          :text-visible="textReady"
           @solve="handleSolve"
           @trap="handleTrap"
-          @advance="handleAdvance"
         />
 
         <CompletionScreen
-          v-else-if="gameState === 'COMPLETED' && selectedRole"
-          key="completed"
+          v-else-if="displayedState === 'COMPLETED' && selectedRole"
           :role-title="selectedRole.title"
           :cheatsheet="currentCheatsheet"
           :stats="{
@@ -352,23 +438,58 @@ onUnmounted(() => {
           @review-briefing="reviewBriefing"
           @change-role="resetToRoleSelect"
         />
-      </Transition>
+      </div>
     </main>
+
+    <!-- Viewport-fixed navigation outside .stage-veil so filter/transform never shifts fixed coordinates -->
+    <template v-if="showBriefingNav">
+      <button
+        type="button"
+        class="fixed-lantern-btn is-left"
+        :disabled="!canGoPrev"
+        @click="handleBriefingPrev"
+      >
+        <span class="key-hint" aria-hidden="true">←</span>
+        <span>Назад</span>
+      </button>
+
+      <button
+        type="button"
+        class="fixed-lantern-btn is-right"
+        @click="handleBriefingNext"
+      >
+        <span>{{ briefingNextLabel }}</span>
+        <span class="key-hint" aria-hidden="true">→</span>
+      </button>
+    </template>
+
+    <button
+      v-else-if="showEncounterNext"
+      type="button"
+      class="fixed-lantern-btn is-right"
+      @click="handleAdvance"
+    >
+      <span>{{ displayedIndex === encounters.length - 1 ? 'К маяку' : 'Дальше' }}</span>
+      <span class="key-hint" aria-hidden="true">→</span>
+    </button>
   </div>
 </template>
 
 <style lang="scss" scoped>
 .abyss-shell {
   position: relative;
-  min-height: 100vh;
+  width: 100%;
+  height: 100vh;
+  height: 100dvh;
+  overflow: hidden;
   display: flex;
   flex-direction: column;
   z-index: 1;
 }
 
 .horizon-bar {
-  position: sticky;
-  top: 0;
+  flex-shrink: 0;
+  position: relative;
   z-index: 20;
   display: flex;
   align-items: center;
@@ -415,9 +536,17 @@ onUnmounted(() => {
   z-index: 10;
   width: 100%;
   max-width: 820px;
+  max-height: calc(100vh - 240px);
+  max-height: calc(100dvh - 240px);
   margin: 0 auto;
-  padding: 24px 24px 0;
-  flex: 1;
+  padding: 20px 24px 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+  scrollbar-width: none;
+
+  &::-webkit-scrollbar {
+    display: none;
+  }
 }
 
 @media (max-width: 760px) {
@@ -431,7 +560,8 @@ onUnmounted(() => {
   }
 
   .stage-container {
-    padding: 14px 16px 0;
+    max-height: calc(100dvh - 210px);
+    padding: 12px 16px 0;
   }
 }
 </style>

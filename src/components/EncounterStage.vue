@@ -18,14 +18,10 @@ const props = defineProps({
   roleTitle: {
     type: String,
     required: true
-  },
-  textVisible: {
-    type: Boolean,
-    default: true
   }
 });
 
-const emit = defineEmits(['solve', 'trap', 'advance']);
+const emit = defineEmits(['solve', 'trap']);
 
 const triedWrongIds = ref([]);
 const activeQuote = ref('');
@@ -66,74 +62,60 @@ function selectOption(opt) {
 
 <template>
   <section class="encounter-stage">
-    <Transition name="fog-reveal" mode="out-in">
-      <div v-if="textVisible" :key="encounter.id" class="encounter-float">
-        <div class="encounter-kicker mist-glow">
-          <span>{{ phaseLabel }}</span>
-          <span aria-hidden="true">·</span>
-          <span class="tabular-nums">Шлюз {{ index + 1 }} из {{ total }}</span>
-        </div>
-
-        <h2 class="display-title encounter-title mist-glow">
-          <RichMistText :text="encounter.title" />
-        </h2>
-
-        <p class="rule-whisper mist-glow">
-          <RichMistText :text="encounter.ruleWhisper" />
-        </p>
-
-        <p class="situation-prompt mist-glow">
-          <RichMistText :text="encounter.situation" />
-        </p>
-
-        <div class="choices-silhouette">
-          <button
-            v-for="(opt, idx) in encounter.options"
-            :key="opt.id"
-            type="button"
-            class="silhouette-choice mist-glow"
-            :disabled="statusKind === 'open' || triedWrongIds.includes(opt.id)"
-            :class="{
-              'is-trapped': triedWrongIds.includes(opt.id),
-              'is-cleared': statusKind === 'open' && opt.isCorrect
-            }"
-            @click="selectOption(opt)"
-          >
-            <span class="choice-dot" aria-hidden="true" />
-            <span class="choice-num tabular-nums">0{{ idx + 1 }}</span>
-            <span class="choice-text">
-              <RichMistText :text="opt.text" />
-            </span>
-          </button>
-        </div>
-
-        <Transition name="fog-reveal">
-          <div
-            v-if="activeQuote"
-            class="quote-feedback mist-glow"
-            :class="statusKind === 'open' ? 'is-open' : 'is-trap'"
-            role="status"
-          >
-            <span class="quote-tag">
-              {{ statusKind === 'open' ? 'Путь открыт' : 'Ловушка · По правилу' }}
-            </span>
-            <p class="quote-body">
-              <RichMistText :text="activeQuote" />
-            </p>
-          </div>
-        </Transition>
+    <div class="encounter-float">
+      <div class="encounter-kicker mist-glow">
+        <span>{{ phaseLabel }}</span>
+        <span aria-hidden="true">·</span>
+        <span class="tabular-nums">Шлюз {{ index + 1 }} из {{ total }}</span>
       </div>
-    </Transition>
 
-    <button
-      v-if="textVisible && statusKind === 'open'"
-      type="button"
-      class="fixed-lantern-btn is-right"
-      @click="emit('advance')"
-    >
-      <span>{{ index === total - 1 ? 'К маяку' : 'Дальше' }}</span>
-      <span class="key-hint" aria-hidden="true">→</span>
-    </button>
+      <h2 class="display-title encounter-title mist-glow">
+        <RichMistText :text="encounter.title" />
+      </h2>
+
+      <p class="rule-whisper mist-glow">
+        <RichMistText :text="encounter.ruleWhisper" />
+      </p>
+
+      <p class="situation-prompt mist-glow">
+        <RichMistText :text="encounter.situation" />
+      </p>
+
+      <div class="choices-silhouette">
+        <button
+          v-for="(opt, idx) in encounter.options"
+          :key="opt.id"
+          type="button"
+          class="silhouette-choice mist-glow"
+          :disabled="statusKind === 'open' || triedWrongIds.includes(opt.id)"
+          :class="{
+            'is-trapped': triedWrongIds.includes(opt.id),
+            'is-cleared': statusKind === 'open' && opt.isCorrect
+          }"
+          @click="selectOption(opt)"
+        >
+          <span class="choice-dot" aria-hidden="true" />
+          <span class="choice-num tabular-nums">0{{ idx + 1 }}</span>
+          <span class="choice-text">
+            <RichMistText :text="opt.text" />
+          </span>
+        </button>
+      </div>
+
+      <div
+        v-if="activeQuote"
+        class="quote-feedback mist-glow"
+        :class="statusKind === 'open' ? 'is-open' : 'is-trap'"
+        role="status"
+      >
+        <span class="quote-tag">
+          {{ statusKind === 'open' ? 'Путь открыт' : 'Ловушка · По правилу' }}
+        </span>
+        <p class="quote-body">
+          <RichMistText :text="activeQuote" />
+        </p>
+      </div>
+    </div>
   </section>
 </template>
 
@@ -143,8 +125,7 @@ function selectOption(opt) {
   flex-direction: column;
   align-items: flex-start;
   justify-content: flex-start;
-  min-height: 380px;
-  padding-bottom: 195px;
+  padding-bottom: 20px;
 }
 
 .encounter-float {
@@ -152,7 +133,7 @@ function selectOption(opt) {
   display: flex;
   flex-direction: column;
   align-items: flex-start;
-  gap: 14px;
+  gap: 13px;
 }
 
 .encounter-kicker {
@@ -175,16 +156,16 @@ function selectOption(opt) {
 .rule-whisper {
   font-size: 14px;
   color: var(--text-secondary);
-  line-height: 1.58;
+  line-height: 1.56;
   max-width: 62ch;
 }
 
 .situation-prompt {
-  margin-top: 6px;
-  font-size: 17.5px;
+  margin-top: 4px;
+  font-size: 17px;
   font-weight: 500;
   color: #f1f7fa;
-  line-height: 1.56;
+  line-height: 1.55;
   max-width: 60ch;
 }
 
@@ -192,8 +173,8 @@ function selectOption(opt) {
   width: 100%;
   display: flex;
   flex-direction: column;
-  gap: 12px;
-  margin-top: 10px;
+  gap: 10px;
+  margin-top: 8px;
 }
 
 .silhouette-choice {
@@ -201,12 +182,12 @@ function selectOption(opt) {
   display: flex;
   align-items: flex-start;
   gap: 12px;
-  padding: 6px 0;
+  padding: 5px 0;
   text-align: left;
   color: var(--text-primary);
   opacity: 0.62;
   font-size: 15.5px;
-  line-height: 1.52;
+  line-height: 1.5;
   transition:
     opacity 220ms var(--ease-settle),
     color 220ms var(--ease-settle),
@@ -276,7 +257,7 @@ function selectOption(opt) {
 }
 
 .quote-feedback {
-  margin-top: 8px;
+  margin-top: 6px;
   display: flex;
   flex-direction: column;
   gap: 4px;
@@ -300,6 +281,6 @@ function selectOption(opt) {
 .quote-body {
   font-size: 14.5px;
   color: var(--text-primary);
-  line-height: 1.58;
+  line-height: 1.55;
 }
 </style>

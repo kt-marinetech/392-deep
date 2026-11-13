@@ -24,7 +24,9 @@ html,
 body {
   margin: 0;
   padding: 0;
-  min-height: 100%;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
   background-color: var(--bg-abyss);
   color: var(--text-primary);
   font-family: var(--font-body);
@@ -32,7 +34,6 @@ body {
   line-height: 1.6;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  overflow-x: hidden;
 }
 
 button {
@@ -78,14 +79,12 @@ ol {
   text-wrap: balance;
 }
 
-/* Soft atmospheric mist shadow for floating typography */
 .mist-glow {
   text-shadow:
     0 2px 22px rgba(2, 4, 7, 0.96),
     0 0 32px rgba(206, 228, 240, 0.14);
 }
 
-/* Literary serif italic glow for technical terms instead of gray doc pills */
 .abyss-term {
   font-family: var(--font-display);
   font-style: italic;
@@ -96,7 +95,6 @@ ol {
   text-shadow: 0 0 16px rgba(212, 236, 248, 0.42);
 }
 
-/* Pure typographic lantern buttons: zero boxes, zero borders */
 .lantern-btn {
   display: inline-flex;
   align-items: center;
@@ -232,7 +230,6 @@ ol {
   }
 }
 
-/* Glowing dust-particle list items */
 .dust-list {
   display: flex;
   flex-direction: column;
@@ -243,7 +240,7 @@ ol {
     padding-left: 18px;
     font-size: 14.5px;
     color: var(--text-secondary);
-    line-height: 1.58;
+    line-height: 1.56;
 
     &::before {
       content: '';
@@ -259,25 +256,20 @@ ol {
   }
 }
 
-/* Fog blur-in / blur-out transition */
-.fog-reveal-enter-active,
-.fog-reveal-leave-active {
+/* Single smooth fog veil transition (no DOM unmount flicker, no layout shift) */
+.stage-veil {
+  opacity: 1;
+  filter: blur(0px);
   transition:
-    opacity 420ms var(--ease-settle),
-    filter 420ms var(--ease-settle),
-    transform 420ms var(--ease-settle);
-}
+    opacity 260ms var(--ease-settle),
+    filter 260ms var(--ease-settle);
+  will-change: opacity, filter;
 
-.fog-reveal-enter-from {
-  opacity: 0;
-  filter: blur(8px);
-  transform: translateX(14px);
-}
-
-.fog-reveal-leave-to {
-  opacity: 0;
-  filter: blur(8px);
-  transform: translateX(-14px);
+  &.is-fogged {
+    opacity: 0;
+    filter: blur(6px);
+    pointer-events: none;
+  }
 }
 
 @keyframes screen-jolt {
@@ -304,9 +296,9 @@ ol {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .fog-reveal-enter-active,
-  .fog-reveal-leave-active,
-  .lantern-btn {
+  .stage-veil,
+  .lantern-btn,
+  .fixed-lantern-btn {
     transition: none;
     filter: none;
   }
