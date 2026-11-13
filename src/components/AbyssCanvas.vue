@@ -162,6 +162,311 @@ onMounted(() => {
     phase: i * 0.61
   }));
 
+  // Deep-ocean ambient silhouettes (drawn behind towers, snow, seabed, and text)
+  const marineLife = [
+    {
+      kind: 'school',
+      xNorm: 0.74,
+      yNorm: 0.62,
+      dir: -1,
+      speed: 0.018,
+      scale: 1,
+      alpha: 0.44,
+      depth: 0.35,
+      phase: 1.2,
+      fish: Array.from({ length: 9 }, (_, idx) => ({
+        ox: (idx - 4) * 14 + ((idx % 3) - 1) * 7,
+        oy: Math.sin(idx * 1.7) * 18,
+        size: 8.5 + (idx % 3) * 2.2,
+        phase: idx * 0.9
+      }))
+    },
+    {
+      kind: 'jelly',
+      xNorm: 0.86,
+      yNorm: 0.66,
+      dir: -1,
+      speed: 0.0045,
+      riseSpeed: 0.0085,
+      scale: 0.95,
+      alpha: 0.42,
+      depth: 0.25,
+      phase: 0.4
+    }
+  ];
+
+  let nextCreatureTimer = 3.2;
+  let nextWhaleTimer = 4.5;
+
+  function spawnCreature(kindOverride) {
+    const hasWhale = marineLife.some((c) => c.kind === 'whale');
+    const kind =
+      kindOverride ||
+      (!hasWhale && nextWhaleTimer <= 0
+        ? 'whale'
+        : ['ray', 'school', 'jelly'][Math.floor(Math.random() * 3)]);
+
+    const dir = Math.random() > 0.5 ? 1 : -1;
+    const startX = dir === 1 ? -0.22 : 1.22;
+
+    if (kind === 'whale') {
+      nextWhaleTimer = 22 + Math.random() * 14;
+      marineLife.push({
+        kind: 'whale',
+        xNorm: startX,
+        yNorm: 0.28 + Math.random() * 0.3,
+        dir,
+        speed: 0.013 + Math.random() * 0.006,
+        scale: 155 + Math.random() * 55,
+        alpha: 0.42 + Math.random() * 0.1,
+        depth: 0.24,
+        phase: Math.random() * Math.PI * 2
+      });
+    } else if (kind === 'ray') {
+      marineLife.push({
+        kind: 'ray',
+        xNorm: startX,
+        yNorm: 0.34 + Math.random() * 0.34,
+        dir,
+        speed: 0.022 + Math.random() * 0.01,
+        scale: 0.9 + Math.random() * 0.35,
+        alpha: 0.44 + Math.random() * 0.08,
+        depth: 0.32,
+        phase: Math.random() * Math.PI * 2
+      });
+    } else if (kind === 'school') {
+      const count = 7 + Math.floor(Math.random() * 5);
+      marineLife.push({
+        kind: 'school',
+        xNorm: dir === 1 ? -0.16 : 1.16,
+        yNorm: 0.44 + Math.random() * 0.26,
+        dir,
+        speed: 0.018 + Math.random() * 0.01,
+        scale: 0.85 + Math.random() * 0.3,
+        alpha: 0.44,
+        depth: 0.38,
+        phase: Math.random() * Math.PI * 2,
+        fish: Array.from({ length: count }, (_, idx) => ({
+          ox: (idx - count / 2) * 13 + (Math.random() - 0.5) * 10,
+          oy: (Math.random() - 0.5) * 32,
+          size: 8 + Math.random() * 5.5,
+          phase: Math.random() * Math.PI * 2
+        }))
+      });
+    } else {
+      marineLife.push({
+        kind: 'jelly',
+        xNorm: 0.12 + Math.random() * 0.76,
+        yNorm: 0.96,
+        dir: Math.random() > 0.5 ? 1 : -1,
+        speed: 0.003 + Math.random() * 0.003,
+        riseSpeed: 0.008 + Math.random() * 0.005,
+        scale: 0.78 + Math.random() * 0.38,
+        alpha: 0.4,
+        depth: 0.28,
+        phase: Math.random() * Math.PI * 2
+      });
+    }
+  }
+
+  function drawWhale(ctxRef, c, sx, sy, t) {
+    const L = c.scale;
+    const flap = Math.sin(t * 0.95 + c.phase);
+    const tailY = flap * (L * 0.075);
+
+    ctxRef.save();
+    ctxRef.translate(sx, sy + Math.sin(t * 0.45 + c.phase) * 7);
+    ctxRef.scale(c.dir, 1);
+
+    ctxRef.fillStyle = `rgba(3, 7, 11, ${c.alpha})`;
+    ctxRef.beginPath();
+    // Nose / top ridge
+    ctxRef.moveTo(L * 0.48, -L * 0.01);
+    ctxRef.bezierCurveTo(L * 0.46, -L * 0.12, L * 0.22, -L * 0.16, 0, -L * 0.13);
+    // Slight dorsal hump & tail peduncle
+    ctxRef.bezierCurveTo(-L * 0.15, -L * 0.12, -L * 0.18, -L * 0.155, -L * 0.21, -L * 0.115);
+    ctxRef.bezierCurveTo(-L * 0.33, -L * 0.09, -L * 0.44, -L * 0.03 + tailY * 0.7, -L * 0.53, tailY);
+    // Tail flukes
+    ctxRef.quadraticCurveTo(-L * 0.62, -L * 0.13 + tailY, -L * 0.65, -L * 0.14 + tailY);
+    ctxRef.quadraticCurveTo(-L * 0.58, -L * 0.02 + tailY, -L * 0.55, tailY * 1.05);
+    ctxRef.quadraticCurveTo(-L * 0.59, L * 0.06 + tailY, -L * 0.64, L * 0.14 + tailY);
+    ctxRef.quadraticCurveTo(-L * 0.57, L * 0.08 + tailY, -L * 0.51, L * 0.025 + tailY * 0.7);
+    // Belly & throat curves
+    ctxRef.bezierCurveTo(-L * 0.36, L * 0.06, -L * 0.18, L * 0.11, L * 0.05, L * 0.12);
+    ctxRef.bezierCurveTo(L * 0.26, L * 0.13, L * 0.44, L * 0.08, L * 0.48, -L * 0.01);
+    ctxRef.closePath();
+    ctxRef.fill();
+
+    // Long pectoral fin trailing gently
+    ctxRef.beginPath();
+    ctxRef.moveTo(L * 0.14, L * 0.08);
+    ctxRef.quadraticCurveTo(
+      L * 0.03,
+      L * 0.23 + flap * 4,
+      -L * 0.08,
+      L * 0.25 + flap * 6
+    );
+    ctxRef.quadraticCurveTo(L * 0.04, L * 0.16, L * 0.07, L * 0.09);
+    ctxRef.closePath();
+    ctxRef.fill();
+
+    // Ultra-subtle mist rim along back catching overhead shafts
+    ctxRef.strokeStyle = 'rgba(182, 214, 230, 0.05)';
+    ctxRef.lineWidth = 1.4;
+    ctxRef.beginPath();
+    ctxRef.moveTo(L * 0.46, -L * 0.03);
+    ctxRef.bezierCurveTo(L * 0.36, -L * 0.13, L * 0.12, -L * 0.15, -L * 0.12, -L * 0.12);
+    ctxRef.stroke();
+
+    ctxRef.restore();
+  }
+
+  function drawMantaRay(ctxRef, c, sx, sy, t) {
+    const s = 44 * c.scale;
+    const flap = Math.sin(t * 2.15 + c.phase);
+    const wingY = flap * (s * 0.34);
+
+    ctxRef.save();
+    ctxRef.translate(sx, sy + Math.sin(t * 1.1 + c.phase) * 8);
+    ctxRef.scale(c.dir, 1);
+
+    ctxRef.fillStyle = `rgba(3, 7, 11, ${c.alpha})`;
+    ctxRef.beginPath();
+    // Head / cephalic fins
+    ctxRef.moveTo(s * 0.56, 0);
+    ctxRef.quadraticCurveTo(s * 0.34, -s * 0.14, s * 0.12, -s * 0.22);
+    // Upper wing sweep
+    ctxRef.quadraticCurveTo(-s * 0.04, -s * 0.65 + wingY, -s * 0.24, -s * 0.72 + wingY * 1.15);
+    ctxRef.quadraticCurveTo(-s * 0.22, -s * 0.25 + wingY * 0.4, -s * 0.34, -s * 0.04);
+    // Lower wing sweep
+    ctxRef.quadraticCurveTo(-s * 0.2, s * 0.22 - wingY * 0.3, -s * 0.16, s * 0.52 - wingY * 0.85);
+    ctxRef.quadraticCurveTo(s * 0.06, s * 0.38 - wingY * 0.5, s * 0.22, s * 0.14);
+    ctxRef.quadraticCurveTo(s * 0.44, s * 0.12, s * 0.56, 0);
+    ctxRef.closePath();
+    ctxRef.fill();
+
+    // Slender whip tail
+    ctxRef.strokeStyle = `rgba(3, 7, 11, ${c.alpha})`;
+    ctxRef.lineWidth = 1.8;
+    ctxRef.beginPath();
+    ctxRef.moveTo(-s * 0.3, -s * 0.02);
+    ctxRef.quadraticCurveTo(-s * 0.65, flap * 7, -s * 1.05, -flap * 6);
+    ctxRef.stroke();
+
+    ctxRef.restore();
+  }
+
+  function drawFishSchool(ctxRef, c, sx, sy, t) {
+    ctxRef.save();
+    ctxRef.fillStyle = `rgba(3, 7, 11, ${c.alpha})`;
+
+    c.fish.forEach((f) => {
+      const fx = sx + f.ox * c.scale;
+      const fy = sy + f.oy * c.scale + Math.sin(t * 1.7 + f.phase) * 3.5;
+      const wag = Math.sin(t * 6.5 + f.phase) * 2.2;
+      const len = f.size * c.scale;
+
+      ctxRef.save();
+      ctxRef.translate(fx, fy);
+      ctxRef.scale(c.dir, 1);
+
+      ctxRef.beginPath();
+      ctxRef.moveTo(len * 0.55, 0);
+      ctxRef.quadraticCurveTo(len * 0.1, -len * 0.26, -len * 0.42, wag * 0.35);
+      ctxRef.lineTo(-len * 0.68, -len * 0.22 + wag);
+      ctxRef.lineTo(-len * 0.56, wag * 0.5);
+      ctxRef.lineTo(-len * 0.68, len * 0.22 + wag);
+      ctxRef.lineTo(-len * 0.42, wag * 0.35);
+      ctxRef.quadraticCurveTo(len * 0.1, len * 0.26, len * 0.55, 0);
+      ctxRef.closePath();
+      ctxRef.fill();
+      ctxRef.restore();
+    });
+
+    ctxRef.restore();
+  }
+
+  function drawJellyfish(ctxRef, c, sx, sy, t) {
+    const pulse = Math.sin(t * 1.65 + c.phase);
+    const rx = (13.5 - pulse * 2.4) * c.scale;
+    const ry = (10.5 + pulse * 2.2) * c.scale;
+    const tilt = Math.sin(t * 0.6 + c.phase) * 0.1;
+
+    ctxRef.save();
+    ctxRef.translate(sx, sy);
+    ctxRef.rotate(tilt);
+
+    // Translucent bell silhouette
+    ctxRef.fillStyle = `rgba(4, 9, 14, ${c.alpha})`;
+    ctxRef.beginPath();
+    ctxRef.ellipse(0, 0, rx, ry, 0, Math.PI, 0);
+    ctxRef.quadraticCurveTo(rx * 0.5, ry * 0.35, 0, ry * 0.15);
+    ctxRef.quadraticCurveTo(-rx * 0.5, ry * 0.35, -rx, 0);
+    ctxRef.closePath();
+    ctxRef.fill();
+
+    // Very soft deep-water rim on bell (never bright enough to distract from text)
+    ctxRef.strokeStyle = 'rgba(182, 218, 236, 0.08)';
+    ctxRef.lineWidth = 1;
+    ctxRef.beginPath();
+    ctxRef.ellipse(0, 0, rx * 0.92, ry * 0.9, 0, Math.PI * 1.08, -Math.PI * 0.08);
+    ctxRef.stroke();
+
+    // Trailing filaments
+    ctxRef.strokeStyle = `rgba(5, 11, 16, ${c.alpha * 0.85})`;
+    ctxRef.lineWidth = 1.1;
+    for (let i = -2; i <= 2; i++) {
+      const startX = (i / 2) * rx * 0.62;
+      const sway = Math.sin(t * 1.8 + c.phase + i * 0.7) * 6 * c.scale;
+      const len = (24 + (2 - Math.abs(i)) * 7) * c.scale;
+      ctxRef.beginPath();
+      ctxRef.moveTo(startX, ry * 0.12);
+      ctxRef.quadraticCurveTo(startX + sway * 0.7, len * 0.52, startX - sway * 0.45, len);
+      ctxRef.stroke();
+    }
+
+    ctxRef.restore();
+  }
+
+  function updateAndDrawMarineLife(ctxRef, dt, t, w, h, parallaxOffset) {
+    if (!reducedMotion) {
+      nextCreatureTimer -= dt;
+      nextWhaleTimer -= dt;
+
+      if (nextCreatureTimer <= 0 && marineLife.length < 3) {
+        spawnCreature();
+        nextCreatureTimer = 9 + Math.random() * 8;
+      } else if (nextWhaleTimer <= 0 && marineLife.length < 4 && !marineLife.some((c) => c.kind === 'whale')) {
+        spawnCreature('whale');
+      }
+    }
+
+    for (let i = marineLife.length - 1; i >= 0; i--) {
+      const c = marineLife[i];
+      if (!reducedMotion) {
+        if (c.kind === 'jelly') {
+          c.yNorm -= c.riseSpeed * dt;
+          c.xNorm += Math.sin(t * 0.45 + c.phase) * c.speed * dt;
+        } else {
+          c.xNorm += c.dir * c.speed * dt;
+        }
+      }
+
+      if (c.xNorm < -0.35 || c.xNorm > 1.35 || c.yNorm < -0.18) {
+        marineLife.splice(i, 1);
+        continue;
+      }
+
+      const sx = c.xNorm * w + parallaxOffset * c.depth;
+      const sy = c.yNorm * h;
+
+      if (c.kind === 'whale') drawWhale(ctxRef, c, sx, sy, t);
+      else if (c.kind === 'ray') drawMantaRay(ctxRef, c, sx, sy, t);
+      else if (c.kind === 'school') drawFishSchool(ctxRef, c, sx, sy, t);
+      else drawJellyfish(ctxRef, c, sx, sy, t);
+    }
+  }
+
   function resize() {
     const dpr = Math.min(window.devicePixelRatio || 1, 2);
     canvas.width = Math.floor(window.innerWidth * dpr);
@@ -506,9 +811,12 @@ onMounted(() => {
       ctx.fill();
     }
 
+    // 2.5 Deep-ocean silhouettes (whales, rays, fish schools, jellyfish) behind towers & marine snow
+    const parallaxOffset = -cameraWorldX * 52 + (normPX - 0.5) * -12;
+    updateAndDrawMarineLife(ctx, dt, t, w, h, parallaxOffset);
+
     // 3. Distant parallax ridge & sunken towers
     ctx.save();
-    const parallaxOffset = -cameraWorldX * 52 + (normPX - 0.5) * -12;
     ctx.fillStyle = 'rgba(7, 12, 17, 0.72)';
     ctx.beginPath();
     ctx.moveTo(0, h);
