@@ -1,0 +1,6 @@
+{
+  "name": "Vue 3 Sass Vite Starter",
+  "description": "Empty Vue 3, Sass, and Vite starter project.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

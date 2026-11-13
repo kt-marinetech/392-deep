@@ -1,0 +1,317 @@
+:root {
+  --bg-abyss: #04070a;
+  --text-primary: #e8f0f4;
+  --text-secondary: #adbdc8;
+  --text-muted: #6f808c;
+
+  --accent-mist: #e2eff5;
+  --state-ok: #98d9be;
+  --state-danger: #e09187;
+
+  --font-display: 'Cormorant Garamond', Georgia, serif;
+  --font-body: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+
+  --ease-settle: cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  min-height: 100%;
+  background-color: var(--bg-abyss);
+  color: var(--text-primary);
+  font-family: var(--font-body);
+  font-size: 16px;
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  overflow-x: hidden;
+}
+
+button {
+  font-family: inherit;
+  cursor: pointer;
+  color: inherit;
+  background: none;
+  border: none;
+  padding: 0;
+}
+
+button:focus-visible,
+a:focus-visible {
+  outline: 1px solid rgba(226, 239, 245, 0.55);
+  outline-offset: 4px;
+}
+
+h1,
+h2,
+h3,
+h4,
+p,
+ul,
+ol {
+  margin: 0;
+}
+
+ul,
+ol {
+  padding: 0;
+  list-style: none;
+}
+
+.tabular-nums {
+  font-variant-numeric: tabular-nums;
+}
+
+.display-title {
+  font-family: var(--font-display);
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  line-height: 1.06;
+  text-wrap: balance;
+}
+
+/* Soft atmospheric mist shadow for floating typography */
+.mist-glow {
+  text-shadow:
+    0 2px 22px rgba(2, 4, 7, 0.96),
+    0 0 32px rgba(206, 228, 240, 0.14);
+}
+
+/* Literary serif italic glow for technical terms instead of gray doc pills */
+.abyss-term {
+  font-family: var(--font-display);
+  font-style: italic;
+  font-weight: 600;
+  font-size: 1.12em;
+  letter-spacing: 0.01em;
+  color: #f3f9fc;
+  text-shadow: 0 0 16px rgba(212, 236, 248, 0.42);
+}
+
+/* Pure typographic lantern buttons: zero boxes, zero borders */
+.lantern-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 40px;
+  padding: 6px 2px;
+  font-size: 15px;
+  font-weight: 500;
+  letter-spacing: 0.01em;
+  color: #eef5f8;
+  opacity: 0.45;
+  white-space: nowrap;
+  flex-shrink: 0;
+  text-shadow: 0 2px 14px rgba(2, 4, 7, 0.95);
+  transition:
+    opacity 220ms var(--ease-settle),
+    color 220ms var(--ease-settle),
+    text-shadow 240ms var(--ease-settle),
+    transform 220ms var(--ease-settle);
+
+  &:hover:not(:disabled) {
+    opacity: 1;
+    color: #ffffff;
+    text-shadow:
+      0 0 20px rgba(226, 244, 255, 0.72),
+      0 2px 14px rgba(2, 4, 7, 0.95);
+    transform: translateX(3px);
+  }
+
+  &.is-back:hover:not(:disabled) {
+    transform: translateX(-3px);
+  }
+
+  &.is-active {
+    opacity: 0.96;
+    color: #ffffff;
+    text-shadow:
+      0 0 16px rgba(220, 240, 250, 0.48),
+      0 2px 14px rgba(2, 4, 7, 0.95);
+  }
+
+  &:disabled {
+    opacity: 0.16;
+    cursor: not-allowed;
+  }
+}
+
+.fixed-lantern-btn {
+  position: fixed;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 25;
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 44px;
+  padding: 8px 4px;
+  font-size: 15px;
+  font-weight: 500;
+  letter-spacing: 0.01em;
+  color: #eef5f8;
+  opacity: 0.45;
+  white-space: nowrap;
+  text-shadow: 0 2px 14px rgba(2, 4, 7, 0.95);
+  transition:
+    opacity 220ms var(--ease-settle),
+    color 220ms var(--ease-settle),
+    text-shadow 240ms var(--ease-settle),
+    transform 220ms var(--ease-settle);
+
+  &.is-left {
+    left: clamp(20px, 3.6vw, 56px);
+
+    &:hover:not(:disabled) {
+      transform: translateY(-50%) translateX(-4px);
+    }
+  }
+
+  &.is-right {
+    right: clamp(20px, 3.6vw, 56px);
+
+    &:hover:not(:disabled) {
+      transform: translateY(-50%) translateX(4px);
+    }
+  }
+
+  &:hover:not(:disabled) {
+    opacity: 1;
+    color: #ffffff;
+    text-shadow:
+      0 0 22px rgba(226, 244, 255, 0.78),
+      0 2px 14px rgba(2, 4, 7, 0.95);
+
+    .key-hint {
+      opacity: 0.78;
+    }
+  }
+
+  &:disabled {
+    opacity: 0.14;
+    cursor: not-allowed;
+  }
+}
+
+.key-hint {
+  font-size: 12px;
+  color: var(--text-muted);
+  opacity: 0.55;
+  transition: opacity 200ms var(--ease-settle);
+}
+
+@media (max-width: 1080px) {
+  .fixed-lantern-btn {
+    top: auto;
+    bottom: 18px;
+    transform: none;
+
+    &.is-left {
+      left: 20px;
+
+      &:hover:not(:disabled) {
+        transform: translateX(-3px);
+      }
+    }
+
+    &.is-right {
+      right: 20px;
+
+      &:hover:not(:disabled) {
+        transform: translateX(3px);
+      }
+    }
+  }
+}
+
+/* Glowing dust-particle list items */
+.dust-list {
+  display: flex;
+  flex-direction: column;
+  gap: 11px;
+
+  li {
+    position: relative;
+    padding-left: 18px;
+    font-size: 14.5px;
+    color: var(--text-secondary);
+    line-height: 1.58;
+
+    &::before {
+      content: '';
+      position: absolute;
+      left: 2px;
+      top: 9px;
+      width: 4px;
+      height: 4px;
+      border-radius: 50%;
+      background: rgba(232, 244, 250, 0.85);
+      box-shadow: 0 0 8px rgba(212, 236, 248, 0.8);
+    }
+  }
+}
+
+/* Fog blur-in / blur-out transition */
+.fog-reveal-enter-active,
+.fog-reveal-leave-active {
+  transition:
+    opacity 420ms var(--ease-settle),
+    filter 420ms var(--ease-settle),
+    transform 420ms var(--ease-settle);
+}
+
+.fog-reveal-enter-from {
+  opacity: 0;
+  filter: blur(8px);
+  transform: translateX(14px);
+}
+
+.fog-reveal-leave-to {
+  opacity: 0;
+  filter: blur(8px);
+  transform: translateX(-14px);
+}
+
+@keyframes screen-jolt {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0);
+  }
+  18% {
+    transform: translate3d(-7px, 3px, 0);
+  }
+  36% {
+    transform: translate3d(6px, -4px, 0);
+  }
+  54% {
+    transform: translate3d(-5px, -2px, 0);
+  }
+  72% {
+    transform: translate3d(4px, 2px, 0);
+  }
+}
+
+.is-shaking {
+  animation: screen-jolt 420ms cubic-bezier(0.36, 0.07, 0.19, 0.97);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .fog-reveal-enter-active,
+  .fog-reveal-leave-active,
+  .lantern-btn {
+    transition: none;
+    filter: none;
+  }
+
+  .is-shaking {
+    animation: none;
+  }
+}
