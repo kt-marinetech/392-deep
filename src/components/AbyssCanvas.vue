@@ -238,7 +238,7 @@ onMounted(() => {
 
         // Subtle etched numeral 01..04 hovering just above post
         if (isBriefing) {
-          ctxRef.font = '500 12px "Plus Jakarta Sans", sans-serif';
+          ctxRef.font = '500 12px "Inter", sans-serif';
           ctxRef.textAlign = 'center';
           ctxRef.fillStyle = `rgba(226, 240, 248, ${0.28 + g * 0.68})`;
           ctxRef.fillText(`0${idx + 1}`, sx, gy - 70);

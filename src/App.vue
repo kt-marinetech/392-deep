@@ -38,10 +38,13 @@ const firstTryCount = ref(0);
 const isShaking = ref(false);
 const soundMuted = ref(isSoundMuted());
 const stageContainerRef = ref(null);
+const visitedSprintDays = ref([0]);
+const nudgeSprintDays = ref(false);
 
 let shakeTimer = null;
 let minFadeTimer = null;
 let fallbackArrivalTimer = null;
+let nudgeTimer = null;
 let minFadeDone = true;
 let arrivedDone = true;
 
@@ -65,6 +68,23 @@ const currentCheatsheet = computed(
   () => ROLE_CHEATSHEET[selectedRoleId.value] || []
 );
 
+const totalRoleSprintDays = computed(
+  () => currentRoleBriefing.value?.sprintDays?.length || 0
+);
+
+const allSprintDaysVisited = computed(
+  () =>
+    totalRoleSprintDays.value > 0 &&
+    visitedSprintDays.value.length >= totalRoleSprintDays.value
+);
+
+const isSprintDaysLocked = computed(
+  () =>
+    targetState.value === 'BRIEFING_ROLE' &&
+    targetRoleStep.value === 1 &&
+    !allSprintDaysVisited.value
+);
+
 const showBriefingNav = computed(
   () => targetState.value === 'BRIEFING_BASE' || targetState.value === 'BRIEFING_ROLE'
 );
@@ -74,6 +94,9 @@ const canGoPrev = computed(
 );
 
 const briefingNextLabel = computed(() => {
+  if (isSprintDaysLocked.value) {
+    return `Открой дни (${visitedSprintDays.value.length}/${totalRoleSprintDays.value})`;
+  }
   if (
     targetState.value === 'BRIEFING_BASE' &&
     targetBaseStep.value === BASE_BRIEFING.length - 1
@@ -89,6 +112,26 @@ const briefingNextLabel = computed(() => {
 const showEncounterNext = computed(
   () => displayedState.value === 'PLAYING' && currentObstacleSolved.value && !isFogged.value
 );
+
+function triggerSprintDayNudge() {
+  nudgeSprintDays.value = true;
+  if (nudgeTimer) clearTimeout(nudgeTimer);
+  nudgeTimer = setTimeout(() => {
+    nudgeSprintDays.value = false;
+  }, 750);
+  playSonarStep();
+}
+
+function handleVisitSprintDay(idx) {
+  if (!visitedSprintDays.value.includes(idx)) {
+    visitedSprintDays.value = [...visitedSprintDays.value, idx];
+    if (visitedSprintDays.value.length >= totalRoleSprintDays.value) {
+      playGateOpen();
+      return;
+    }
+  }
+  playSonarStep();
+}
 
 function handleBriefingPrev() {
   if (targetState.value === 'BRIEFING_BASE') {
@@ -166,6 +209,8 @@ function startRoleRun(roleId) {
   }));
   trapCount.value = 0;
   firstTryCount.value = 0;
+  visitedSprintDays.value = [0];
+  nudgeSprintDays.value = false;
 
   transitionScene(() => {
     targetBaseStep.value = 0;
@@ -194,6 +239,10 @@ function handleBasePrev() {
 }
 
 function handleRoleNext() {
+  if (isSprintDaysLocked.value) {
+    triggerSprintDayNudge();
+    return;
+  }
   transitionScene(() => {
     if (targetRoleStep.value < 3) {
       targetRoleStep.value += 1;
@@ -220,6 +269,10 @@ function handleSelectLantern(idx) {
       targetBaseStep.value = idx;
     }, true);
   } else if (targetState.value === 'BRIEFING_ROLE' && targetRoleStep.value !== idx) {
+    if (targetRoleStep.value === 1 && idx > 1 && !allSprintDaysVisited.value) {
+      triggerSprintDayNudge();
+      return;
+    }
     transitionScene(() => {
       targetRoleStep.value = idx;
     }, true);
@@ -344,6 +397,7 @@ onUnmounted(() => {
   if (shakeTimer) clearTimeout(shakeTimer);
   if (minFadeTimer) clearTimeout(minFadeTimer);
   if (fallbackArrivalTimer) clearTimeout(fallbackArrivalTimer);
+  if (nudgeTimer) clearTimeout(nudgeTimer);
 });
 </script>
 
@@ -413,6 +467,9 @@ onUnmounted(() => {
           :role-briefing="currentRoleBriefing"
           :role-title="selectedRole?.shortTitle || ''"
           :step-index="displayedRoleStep"
+          :visited-days="visitedSprintDays"
+          :nudge-unvisited="nudgeSprintDays"
+          @visit-day="handleVisitSprintDay"
         />
 
         <EncounterStage
@@ -421,6 +478,7 @@ onUnmounted(() => {
           :index="displayedIndex"
           :total="encounters.length"
           :role-title="selectedRole.shortTitle"
+          :is-locked="isFogged"
           @solve="handleSolve"
           @trap="handleTrap"
         />
@@ -456,6 +514,8 @@ onUnmounted(() => {
       <button
         type="button"
         class="fixed-lantern-btn is-right"
+        :class="{ 'is-locked': isSprintDaysLocked }"
+        :aria-disabled="isSprintDaysLocked"
         @click="handleBriefingNext"
       >
         <span>{{ briefingNextLabel }}</span>

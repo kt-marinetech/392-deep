@@ -9,7 +9,7 @@
   --state-danger: #e09187;
 
   --font-display: 'Cormorant Garamond', Georgia, serif;
-  --font-body: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-body: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
 
   --ease-settle: cubic-bezier(0.16, 1, 0.3, 1);
 }
@@ -31,6 +31,7 @@ body {
   color: var(--text-primary);
   font-family: var(--font-body);
   font-size: 16px;
+  letter-spacing: 0.01em;
   line-height: 1.6;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
@@ -74,8 +75,8 @@ ol {
 .display-title {
   font-family: var(--font-display);
   font-weight: 600;
-  letter-spacing: -0.01em;
-  line-height: 1.06;
+  letter-spacing: 0.01em;
+  line-height: 1.08;
   text-wrap: balance;
 }
 
@@ -86,13 +87,11 @@ ol {
 }
 
 .abyss-term {
-  font-family: var(--font-display);
-  font-style: italic;
-  font-weight: 600;
-  font-size: 1.12em;
+  font-family: inherit;
+  font-weight: 500;
   letter-spacing: 0.01em;
-  color: #f3f9fc;
-  text-shadow: 0 0 16px rgba(212, 236, 248, 0.42);
+  color: #ffffff;
+  text-shadow: 0 0 12px rgba(255, 255, 255, 0.4);
 }
 
 .lantern-btn {
@@ -176,12 +175,12 @@ ol {
   &.is-right {
     right: clamp(20px, 3.6vw, 56px);
 
-    &:hover:not(:disabled) {
+    &:hover:not(:disabled):not(.is-locked) {
       transform: translateY(-50%) translateX(4px);
     }
   }
 
-  &:hover:not(:disabled) {
+  &:hover:not(:disabled):not(.is-locked) {
     opacity: 1;
     color: #ffffff;
     text-shadow:
@@ -190,6 +189,15 @@ ol {
 
     .key-hint {
       opacity: 0.78;
+    }
+  }
+
+  &.is-locked {
+    opacity: 0.36;
+    cursor: not-allowed;
+
+    &:hover {
+      opacity: 0.56;
     }
   }
 
@@ -223,7 +231,7 @@ ol {
     &.is-right {
       right: 20px;
 
-      &:hover:not(:disabled) {
+      &:hover:not(:disabled):not(.is-locked) {
         transform: translateX(3px);
       }
     }
@@ -240,7 +248,8 @@ ol {
     padding-left: 18px;
     font-size: 14.5px;
     color: var(--text-secondary);
-    line-height: 1.56;
+    letter-spacing: 0.01em;
+    line-height: 1.6;
 
     &::before {
       content: '';
